@@ -9,5 +9,5 @@ I have two versions of R-markdown records. One is an old version of records that
 The other new version of R markdown document is the one with correct tracking of everything I have performed. All analysis ran and files generated in this document will be used for further analysis and submitted. (***named: "Project_R_newrecord_fixedalign.rmd"***)
 
 Any intermediate files generated in analysis for both versions were downloaded and stored in this project directory. However, the old and new versions were separately stored in different folders.
-***Except for fastqc files***
+***Except for fastqc files: fastqc output files not affected***
 

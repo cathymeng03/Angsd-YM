@@ -1,0 +1,1060 @@
+---
+title: "<center>
+Individual_Project-Summary"
+author: "<center>
+Yinuo (Cathy) Meng"
+date: "<center>
+2025-03-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### This document is an old record of analysis for my individual project in ANGSD 2025 class. (DO NOT USE)    
+```
+### After completing DESeq analysis below, found that I made a mistake in QoRTs alignment QC by using a wron GTF reference file. In addition, even though my STAR-aligned BAM files are good, there is a mistake in my old STAR_align script which leads to failing indexing of the BAM files. For better organization purpose and to correct the mistakes, I am running the same analysis since STAR alignment with all new files generated to be stored in a different folder under my "Individual_Project" dir. But I will still keep this old document and old files temporarily for record-keeping purpose. The correct version of analysis is recorded in a new R markdown document. Thank you!
+```
+  
+  
+#### Part I: Downloading raw data     
+  
+**Information of the data: **    
+  
+------Model system and sample information:  
+```{}
+This is part of the preliminary data of the RAC1 project in our lab (Rohit Chandwani lab). It is unpublished preliminary data of the lab. It is our alumna, Adrien Grimont, Ph.D., who performed the corresponding experiment. Samples were sent to the genomics core at WCMC for QC and subsequent library preparation and RNA-seq. We created the cell line model, generated shRNAs targeting Kras (2 oligos targeting mouse Kras as 2 positive control biological replicates), Rac1 (2 oligos targeting mouse Rac1 as 2 experimental group biological replicates), Renilla (2 oligos targeting Renilla as the negative control), produced viruses carrying these above shRNA constructs, infected, selected and sorted cells carrying the shRNAs, treated all cell lines with doxycycline to activate shRNA expression and collected samples for RNAseq and generated the data in our lab.  
+```
+    
+------Cell type:    
+```{}
+mouse PDAC tumor cell line was used. (mT5 for the data I downloaded now) 
+This cell line is derived from mouse tumor #5 of the KPC PDAC mouse model (Pft1-Cre, KRAS-G12D, p53-R172H/+ as the mouse genotype)
+```
+    
+------Treatment and experimental condition:    
+```{}
+The above data includes two biological replicates for the positive control, two biological replicates for the negative control and two biological replicates for the experimental group: We created the mT5 cell line model, generated shRNAs targeting Kras (2 oligos targeting mouse Kras as 2 positive control biological replicates), Rac1 (2 oligos targeting mouse Rac1 as 2 experimental group biological replicates), Renilla (2 oligos targeting Renilla as the negative control), produced viruses carrying these above shRNA constructs, infected, selected and sorted cells carrying the shRNAs. Therefore, there are lines genereated with mT5 model: 
+"mT5_Kras242, mT5_Kras467" ------mT5 + shRNA targeting Kras (positive control)
+"mT5_Rac1_11, mT5_Rac1_14": ------mT5 + shRNA targeting Rac1
+"mT5_Ren, mT5_Ren2": ------mT5 + shRNA targeting Renilla (negative control)
+The treatment is doxycycline. Our shRNA platform is designed for the shRNA expression and activation to be controlled by doxycycline addition. Therefore, we add doxycycline to all cell lines stated above for shRNA to execute its function to deplete targeted proteins and then collected RNA samples for RNA-seq to examine the molecular consequences of certain depeltions.
+```
+    
+------RNA extraction:    
+```{}
+The RNA was extracted using the phenol extraction methodology. The cell samples were first collected and resuspended in Trizol for lysis purpose. And then chloroform was added and mix to trizol suspensions in order to separate RNA from DNAs, proteins and other cell factors. Then RNA was extracted and precipitated by isopropanol, washed in 70% ethanol and then pelleted down. The final RNA product was resuspended in TE buffer and stored in -80C.
+```
+    
+------Library Prep:     
+```{}
+The genomics core prepared library for us: we applied to use TruSeq RNA Sample Preparation (Non-Stranded and Poly-A selection) method for library prep.  
+```
+    
+------Sequencing platform:    
+```{}
+Nova-Seq 6000 sequencing platform was used (Illumina). And paired-end sequencing is performed.  
+```
+
+
+#### Part II: QC: FASTQC & Multi-QC:      
+  
+  
+*Set-uPs:    *
+```{bash, eval = FALSE}
+# First: Create target directories on cayuga to hold all files
+cd /athena/angsd/scratch/yim4002
+mkdir Individual_Project/         # Project directory
+cd Individual_Project/            
+mkdir Alignment_dir/              # Directory to hold aligned files
+mkdir QC_dir/                     # Directory to hold raw read file QC
+mkdir mm10_ref/                   # Directory to contain downloaded reference genome with annotation information
+mkdir Raw_data/                   # Directory to contain all raw fastq data
+cd Raw_data/                      
+mkdir mT5/                        # Where my raw data files are
+
+# Downloaded and copied all files to the mT5/ directory under Raw_data/ directory
+```
+  
+*Run fastqc analysis on all fastq files: *
+```{bash, eval = FALSE}
+#! /bin/bash -i
+
+# This script is for:
+# Perform QC to all raw fastq files of my project
+
+# Define arguments for this script
+fastqfile_dir=$1
+QC_dir=$2
+
+# To run QC of all files:
+for file in ${fastqfile_dir}/*.fastq.gz; do
+    fastqc "$file" -o ${QC_dir}
+done
+```
+
+```{bash, eval = FALSE}
+# To execute the above script:  
+chmod +x QC.sh
+./QC.sh ./Raw_data/mT5/ ./QC_dir/
+```
+  
+*Did a quick check on the outputs in "./QC_dir/":* 
+```{}
+cd QC_dir/
+ls
+```
+
+```{}
+mT5_Kras242_S117_L003_R1_001_fastqc.html
+mT5_Kras242_S117_L003_R1_001_fastqc.zip
+mT5_Kras242_S117_L003_R2_001_fastqc.html
+mT5_Kras242_S117_L003_R2_001_fastqc.zip
+mT5_Kras467_S118_L003_R1_001_fastqc.html
+mT5_Kras467_S118_L003_R1_001_fastqc.zip
+mT5_Kras467_S118_L003_R2_001_fastqc.html
+mT5_Kras467_S118_L003_R2_001_fastqc.zip
+mT5_Rac1_11_S119_L003_R1_001_fastqc.html
+mT5_Rac1_11_S119_L003_R1_001_fastqc.zip
+mT5_Rac1_11_S119_L003_R2_001_fastqc.html
+mT5_Rac1_11_S119_L003_R2_001_fastqc.zip
+mT5_Rac1_14_S120_L003_R1_001_fastqc.html
+mT5_Rac1_14_S120_L003_R1_001_fastqc.zip
+mT5_Rac1_14_S120_L003_R2_001_fastqc.html
+mT5_Rac1_14_S120_L003_R2_001_fastqc.zip
+mT5_Ren2_S125_L003_R1_001_fastqc.html
+mT5_Ren2_S125_L003_R1_001_fastqc.zip
+mT5_Ren2_S125_L003_R2_001_fastqc.html
+mT5_Ren2_S125_L003_R2_001_fastqc.zip
+mT5_Ren_S116_L003_R1_001_fastqc.html
+mT5_Ren_S116_L003_R1_001_fastqc.zip
+mT5_Ren_S116_L003_R2_001_fastqc.html
+mT5_Ren_S116_L003_R2_001_fastqc.zip
+```
+
+*Also performed mutiqc summary analysis for all the fastqc results: *
+```{bash, eval = FALSE}
+mamba activate multiqc
+multiqc * --ignore ./*_fastqc.zip 
+```
+*multiqc result output link: filefile:///Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/2-23-25%20mT5_multiqc_report.html*.   
+
+*Images from the multiqc reprot: * 
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/FASTQC_files/fastqc_multiqc_plots/fastqc_adapter_content_plot.svg")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/FASTQC_files/fastqc_multiqc_plots/fastqc_per_base_n_content_plot.svg")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/FASTQC_files/fastqc_multiqc_plots/fastqc_per_base_sequence_quality_plot.svg")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/FASTQC_files/fastqc_multiqc_plots/fastqc_per_sequence_gc_content_plot.svg")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/FASTQC_files/fastqc_multiqc_plots/fastqc_per_sequence_quality_scores_plot.svg")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/FASTQC_files/fastqc_multiqc_plots/fastqc_sequence_counts_plot.svg")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/FASTQC_files/fastqc_multiqc_plots/fastqc_sequence_duplication_levels_plot.svg")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/FASTQC_files/fastqc_multiqc_plots/fastqc-status-check-heatmap.svg")
+```
+------Interpretation:  
+
+```
+1. Adapter content: The adapter sequence seems to be mostly below 1% of the entire read length, which suggest a good read quality with minimal contamination of adapters. (No trimming is needed)  
+2. Per Base N Content: The N content is basically at 0% across all positions and samples, suggesting clean reads with fully called bases.  
+3. Mean Quality Score:All score lines are flat and high, staying above Phred score 34, demonstrating a high base call accuracy across the full read length and no major quality degradation over read length.
+4. Per Sequence GC Content: For RNA-seq data, especially poly-A selected, I would expect a roughly normal (bell-shaped) distribution of the GC content, which is what has been observed in my fastqc results across all samples(The GC content distribution appears fairly normal and centered around ~50%.). This plot suggests that my RNA-seq libraries are well-prepared and clean, and that my data is good to use for analysis.
+5. Per Sequence Quality Score: Majority of reads have Phred scores > 30, with sharp peak at ~36, suggesting a high quality data that is consistent across samples. Almost no reads fall in the red or yellow zones (data with low or moderate quality), again proving good sequencing read quality.
+6. Sequence Counts: All 6 samples contain very high duplicate read contents (some samples have duplicate reads occupying more than half of total reads) (Later on for featureCounts analysis, decided to ignore these duplicate reads for downstream analysis first, examine by data visualization whether removal of the duplicate reads interfere with my interpretation of biological outcomes across experimental conditions. If no significant biological difference across the 3 conditions is observed, come back to re-run featureCounts with duplicate reads taken into consideration and re-perform all downstream analysis. Because I am running a bulk-RNAseq in this experiment and I am performing gene-level expression quantificaiton and analysis, even if I remove duplciate reads in quantification steps, I still have 20-30 million reads left, which is sufficient for my analysis purpose---I understand that removing duplicate reads in quantification may lead to loss of real biolgoical difference information. But I would like to explore with data anlaysis through different approaches and see if they can work out.)     
+7. Sequence duplication levels: Most reads are unique or duplicated only a few times. But there are high duplications in >1k, >5k, >10k+ bins, which could arise from PCR artifacts (maybe my samples have low input mateirals) or high expression of specific genes (e.g., ribosomal or mitochondrial genes). (It is fine for bulk-RNA seq gene-level analysis but would like to remove the duplicate reads for quantification first)
+```
+
+#### Part III: STAR Alignment:       
+  
+------**Use mm10 version of GRCm38 mouse genome as the reference genome.** For the Rac1 project of the lab, because we have always been using the mm10 genome as reference for RNAseq analysis, I will also use the same reference genome for the purpose of keeping our data analysis consistent.    
+  
+*Download and access the annotation reference genome file: Download the refgene.gtf.gz file and fa.gz file of mm10 (mouse genome GRCm38) as reference genome:   *     
+```{bash, eval=FALSE}
+# Downloaded and copied all files to the mT5/ directory under Raw_data/ directory
+# To download the mm10.refGene.gtf.gz and mm10.fa.gz files
+cd /athena/angsd/scratch/yim4002/Individual_Project/mm10_ref/
+wget --timestamping 'ftp://hgdownload.cse.ucsc.edu/goldenPath/mm10/bigZips/genes/mm10.refGene.gtf.gz' -O mm10.refGene.gtf.gz
+wget --timestamping 'ftp://hgdownload.cse.ucsc.edu/goldenPath/mm10/bigZips/mm10.fa.gz" -O mm10.fa.gz' -O mm10.fa.gz
+
+# Uncompress the downloaded files.  
+zcat mm10.refGene.gtf.gz > mm10.refGene.gtf
+zcat mm10.fa.gz > zcat mm10.fa
+```
+
+*Index the reference genome for STAR alignment: *      
+```{bash, eval = FALSE}
+conda activate angsd
+STAR --runThreadN 8 
+--runMode genomeGenerate \
+--genomeDir ./ \
+--genomeFastaFiles ./mm10.fa \
+--sjdbGTFfile ./mm10.refGene.gtf \
+--sjdbOverhang 99 \
+```  
+  
+*To check the output in the current directory: *      
+```{}
+chrLength.txt	   Genome		 SA
+chrNameLength.txt  genomeParameters.txt  SAindex
+chrName.txt	   Log.out		 sjdbInfo.txt
+chrStart.txt	   mm10.fa		 sjdbList.fromGTF.out.tab
+exonGeTrInfo.tab   mm10.fa.gz		 sjdbList.out.tab
+exonInfo.tab	   mm10.refGene.gtf	 transcriptInfo.tab
+geneInfo.tab	   mm10.refGene.gtf.gz
+```
+
+*Here is the script to run STAR alignment for all fastq files: *    
+*Because there are two files-R1 and R2-of each sample, when setting up for STAR alignment, need to state both Reads' fastq files for each sapmle as in one alignment:*    
+```{bash, eval = FALSE}
+#! /bin/bash -i
+
+# This script is for:
+# Aligning raw fastq files used for the individual projects to proper ref genome
+
+# Define arguments for this script
+fastqfile_dir=$1
+alignment_dir=$2
+
+# To run STAR
+# Define the reference genome for STAR alignment
+# The reference genome should be mouse genome (mm10)
+STAR_dir=/athena/angsd/scratch/yim4002/Individual_Project/mm10_ref/
+
+# Run STAR, use for loop to align all sample fastq files
+# Because the RNAseq is paired-end, there are 2 read files, R1 and R2
+# Need to define R1/R2 files that belong to same sample in for loop
+for R1 in ${fastqfile_dir}/*_R1_001.fastq.gz; do
+  # Define the corresponding R2 file
+  R2="${R1/_R1_001.fastq.gz/_R2_001.fastq.gz}"
+  
+  # Check if R2 exists (for paired-end files)
+  if [ -f "$R2" ]; then
+    echo "Aligning $R1 and $R2..."
+
+    #Run STAR Alignment
+    STAR --runThreadN 16 \
+    --runMode alignReads \
+    --genomeDir $STAR_dir \
+    --readFilesIn "$R1" "$R2" \
+    --readFilesCommand zcat \
+    --outFileNamePrefix ${alignment_dir}/$(basename "$R1" _R1.fastq.gz)_ \
+    --outSAMtype BAM SortedByCoordinate \
+    --quantMode TranscriptomeSAM GeneCounts
+  
+  else
+    echo "R2 file for $R1 not found! Skipping..."
+  fi
+
+done
+
+# Index all the aligned BAM file
+for file in in ${alignment_dir}; do
+  samtools index ${alignment_dir}/$file.Aligned.sortedByCoord.out.bam
+done
+
+```
+
+*To execute the above script: *    
+```{bash, eval = FALSE}
+chmod +x Alignment.sh
+./Alignment.sh ./Raw_data/mT5/ ./Alignment_dir/
+```
+
+*Encountered a technical issue when running the last for loop to index all aligned BAM files, write a separate script for indexing aligned BAM files and store the output indexed files in a sub-directory under "Alignment_dir" directory.*    
+*Make the target sub-directory:  *    
+```{bash, eval=FALSE}
+mkdir /athena/angsd/scratch/yim4002/Individual_Project/Alignment_dir/Indexed_alignment
+```
+
+*Script for indexing the aligned BAM files generated above:  *     
+```{bash, eval=FALSE}
+#! /bin/bash -i
+
+# Since there is a typo in the Alignment.sh script, redo the Indexing after STAR from here:
+# Index all the aligned BAM file
+alignment_dir=$1
+index_output_dir=$2
+
+for file in ${alignment_dir}/*.fastq.gz_Aligned.sortedByCoord.out.bam; do
+  samtools index -o "${index_output_dir}/$(basename "$file").bai" "$file"
+done
+```
+
+*To execute the above script:  *     
+```{bash, eval=FALSE}
+chmod +x ./STAR_index.sh
+./STAR_index.sh ./Alignment_dir ./Alignment_dir/Indexed_alignment
+```
+  
+
+#### PART IV: Alignment QC:    
+  
+*Use the same script I used for the QoRTs alignment QC assignment: copy the script from "angsd_hw" to "Individual_Project" directory and provides different arguments for input BAM file directory, GTF reference file, and output directory when executing it: *    
+```{bash, eval=FALSE}
+# First, make the directories
+# Go to my "Individual_Project" directory under my "angsd_hw" folder for the following analysis (Current path is: /athena/angsd/scratch/yim4002/Individual_Project)
+# Create a new output directory for the following analysis:
+mkdir 3-10-25_Qorts_AlignQC
+
+# Copy the script from my "3-10-25_Alignment_QC" rmd file with editions to loop through my project's sample BAM files:
+# The reference GTF file is different: Since I have used mm10 as my reference genome, I used the "Comprehensive Gene Annotation (CHR)" GTF file for this following QoRTs analysis: 
+wget -P ./3-10-25_Qorts_AlignQC/ https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_mouse/release_M10/gencode.vM10.annotation.gtf.gz
+
+zcat ./3-10-25_Qorts_AlignQC/gencode.vM10.annotation.gtf.gz > ./3-10-25_Qorts_AlignQC/gencode.vM10.annotation.gtf
+
+# Copy of the edited script:
+
+#!/bin/bash
+
+# This is the script for using QoRTs package to perform analysis on and generate plots for read distribution and gene body coverage.
+# For my project's data
+
+# Define the argument for input BAM directory, GTF reference file, and output directory
+
+BAM_file_dir=$1
+GTF_file=$2
+Output_dir=$3
+
+# Define the for loop to loop through all bam files in the target directory:
+for file in ${BAM_file_dir}/*.fastq.gz_Aligned.sortedByCoord.out.bam; do
+
+  # Extract sample name
+  Sample_name=$(basename "$file" .fastq.gz_Aligned.sortedByCoord.out.bam)
+  
+  echo "$Sample_name is being processed......"
+  
+  # Run QoRTs QC for all samples
+  # Specify the QoRTs.jar file
+  # My data is paired-ended so that I don't need to specifcy (by default)
+  # By default, QoRTs perform analysis with un-stranded data
+  java -jar /athena/angsd/scratch/yim4002/angsd_hw/QoRTs.jar QC \
+    --generatePlots \
+    $file \
+    ${GTF_file} \
+    ${Output_dir}/"$Sample_name"/
+
+done
+
+echo "All sample files chosen were processed!"
+```
+  
+*To execute the above script: *    
+```{bash, eval=FALSE}
+chmod +x ./3-10-25_Qorts_AlignQC/Qorts_Align.sh
+
+./3-10-25_Qorts_AlignQC/Qorts_Align.sh ./Alignment_dir ./3-10-25_Qorts_AlignQC/gencode.vM1
+0.annotation.gtf ./3-10-25_Qorts_AlignQC
+```
+  
+**This QoRTs alignemnt is not correct (used wrong gtf file): correct version in the newrecord rmd document. **  
+  
+  
+#### Part V: FeatureCounts:  
+  
+*------Because my fastq data comes from bulk-RNAseq, I plan to ignore potential PCR technical duplicates in the following quantification in FeatureCounts.*     
+*------First check if duplicates are marked in my STAR_aligned files, taking one BAM file as example: *     
+```{bash, eval=FALSE}
+samtools view -H ./Alignment_dir/mT5_Kras242_S117_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.bam | grep 'PG'
+```
+
+*------Output: *    
+```{}
+@PG     ID:STAR PN:STAR VN:2.7.11a      CL:/athena/angsd/scratch/mef3005/share/envs/angsd/bin/STAR-avx2   --runMode alignReads      --runThreadN 16   --genomeDir /athena/angsd/scratch/yim4002/Individual_Project/mm10_ref/   --readFilesIn ./Raw_data/mT5//mT5_Kras242_S117_L003_R1_001.fastq.gz   ./Raw_data/mT5//mT5_Kras242_S117_L003_R2_001.fastq.gz      --readFilesCommand zcat      --outFileNamePrefix ./Alignment_dir//mT5_Kras242_S117_L003_R1_001.fastq.gz_   --outSAMtype BAM   SortedByCoordinate      --quantMode TranscriptomeSAM   GeneCounts   
+@PG     ID:samtools     PN:samtools     PP:STAR VN:1.18 CL:samtools view -H ./Alignment_dir/mT5_Kras242_S117_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.bam
+```
+  
+*------There's no mention of a duplicate marking tool so that my BAM files do not have duplicates marked.*    
+  
+*Write the script below to mark duplicates in my BAM files: *    
+  
+```{bash, eval=FALSE}
+#! /bin/bash -i
+
+# The previous aligned BAM files do not have duplicates marked
+# This script aims to mark the duplicates in reads
+# My original BAM files: do not contain mate information (MC tag) needed for markdup to identify paired reads and their duplicates.
+# So here is some additional steps I need to go before I run "samtools markup"
+   # Convert BAM → name-sorted BAM (samtools collate)
+   # Add mate info (samtools fixmate)
+   # Sort by coordinates again (samtools sort)
+
+
+# Define arguments for input and output directories when running this script
+
+alignment_dir=$1   # Input directory with STAR BAMs
+output_dir=$2      # Output directory for marked BAMs
+
+for bamfile in ${alignment_dir}/*_Aligned.sortedByCoord.out.bam; do
+  echo "Processing $bamfile..."
+
+  # Extract base name
+  sample_name=$(basename "$bamfile" .bam)
+
+  # Define intermediate and final output file names
+  name_sorted_bam="${output_dir}/${sample_name}.name_sorted.bam"
+  fixmate_bam="${output_dir}/${sample_name}.fixmate.bam"
+  coord_sorted_bam="${output_dir}/${sample_name}.coord_sorted.bam"
+  marked_bam="${output_dir}/${sample_name}.marked.bam"
+
+  # Step 1: Name sort
+  samtools collate -o "$name_sorted_bam" "$bamfile"
+
+  # Step 2: Fixmate
+  samtools fixmate -m "$name_sorted_bam" "$fixmate_bam"
+
+  # Step 3: Sort by coordinate
+  samtools sort -o "$coord_sorted_bam" "$fixmate_bam"
+
+  # Step 4: Mark duplicates (do NOT remove)
+  samtools markdup -s "$coord_sorted_bam" "$marked_bam"
+
+  # Step 5: Index final BAM
+  samtools index "$marked_bam"
+
+  echo "✅ Finished: $marked_bam"
+  
+  # Clean up intermediates to save space:
+  rm "$name_sorted_bam" "$fixmate_bam" "$coord_sorted_bam"
+done
+```
+
+*To execute the above script: *     
+```{bash, eval=FALSE}
+chmod +x ./3_31_25_FeatureCounts/Mark_duplicates.sh
+
+./3_31_25_FeatureCounts/Mark_duplicates.sh ./Alignment_dir ./Alignment_dir/BAM_duplicates_marked
+```
+
+*------Record of marking duplicates in all samples: *    
+```{}
+Processing ./Alignment_dir/mT5_Kras242_S117_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.bam...
+[bam_sort_core] merging from 18 files and 1 in-memory blocks...
+COMMAND: samtools markdup -s ./Alignment_dir/BAM_duplicates_marked/mT5_Kras242_S117_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.coord_sorted.bam ./Alignment_dir/BAM_duplicates_marked/mT5_Kras242_S117_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+READ: 126848246
+WRITTEN: 126848246
+EXCLUDED: 16972138
+EXAMINED: 109876108
+PAIRED: 109876108
+SINGLE: 0
+DUPLICATE PAIR: 37534058
+DUPLICATE SINGLE: 0
+DUPLICATE PAIR OPTICAL: 0
+DUPLICATE SINGLE OPTICAL: 0
+DUPLICATE NON PRIMARY: 0
+DUPLICATE NON PRIMARY OPTICAL: 0
+DUPLICATE PRIMARY TOTAL: 37534058
+DUPLICATE TOTAL: 37534058
+ESTIMATED_LIBRARY_SIZE: 60808587
+
+✅ Finished: ./Alignment_dir/BAM_duplicates_marked/mT5_Kras242_S117_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+Processing ./Alignment_dir/mT5_Kras467_S118_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.bam...
+[bam_sort_core] merging from 25 files and 1 in-memory blocks...
+COMMAND: samtools markdup -s ./Alignment_dir/BAM_duplicates_marked/mT5_Kras467_S118_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.coord_sorted.bam ./Alignment_dir/BAM_duplicates_marked/mT5_Kras467_S118_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+READ: 145247072
+WRITTEN: 145247072
+EXCLUDED: 19751014
+EXAMINED: 125496058
+PAIRED: 125496058
+SINGLE: 0
+DUPLICATE PAIR: 44106682
+DUPLICATE SINGLE: 0
+DUPLICATE PAIR OPTICAL: 0
+DUPLICATE SINGLE OPTICAL: 0
+DUPLICATE NON PRIMARY: 0
+DUPLICATE NON PRIMARY OPTICAL: 0
+DUPLICATE PRIMARY TOTAL: 44106682
+DUPLICATE TOTAL: 44106682
+ESTIMATED_LIBRARY_SIZE: 66824017
+
+✅ Finished: ./Alignment_dir/BAM_duplicates_marked/mT5_Kras467_S118_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+Processing ./Alignment_dir/mT5_Rac1_11_S119_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.bam...
+[bam_sort_core] merging from 17 files and 1 in-memory blocks...
+COMMAND: samtools markdup -s ./Alignment_dir/BAM_duplicates_marked/mT5_Rac1_11_S119_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.coord_sorted.bam ./Alignment_dir/BAM_duplicates_marked/mT5_Rac1_11_S119_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+READ: 124346332
+WRITTEN: 124346332
+EXCLUDED: 15848798
+EXAMINED: 108497534
+PAIRED: 108497534
+SINGLE: 0
+DUPLICATE PAIR: 38369840
+DUPLICATE SINGLE: 0
+DUPLICATE PAIR OPTICAL: 0
+DUPLICATE SINGLE OPTICAL: 0
+DUPLICATE NON PRIMARY: 0
+DUPLICATE NON PRIMARY OPTICAL: 0
+DUPLICATE PRIMARY TOTAL: 38369840
+DUPLICATE TOTAL: 38369840
+ESTIMATED_LIBRARY_SIZE: 57284670
+
+✅ Finished: ./Alignment_dir/BAM_duplicates_marked/mT5_Rac1_11_S119_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+Processing ./Alignment_dir/mT5_Rac1_14_S120_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.bam...
+[bam_sort_core] merging from 3 files and 1 in-memory blocks...
+COMMAND: samtools markdup -s ./Alignment_dir/BAM_duplicates_marked/mT5_Rac1_14_S120_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.coord_sorted.bam ./Alignment_dir/BAM_duplicates_marked/mT5_Rac1_14_S120_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+READ: 169370284
+WRITTEN: 169370284
+EXCLUDED: 20944230
+EXAMINED: 148426054
+PAIRED: 148426054
+SINGLE: 0
+DUPLICATE PAIR: 49505052
+DUPLICATE SINGLE: 0
+DUPLICATE PAIR OPTICAL: 0
+DUPLICATE SINGLE OPTICAL: 0
+DUPLICATE NON PRIMARY: 0
+DUPLICATE NON PRIMARY OPTICAL: 0
+DUPLICATE PRIMARY TOTAL: 49505052
+DUPLICATE TOTAL: 49505052
+ESTIMATED_LIBRARY_SIZE: 84822757
+
+✅ Finished: ./Alignment_dir/BAM_duplicates_marked/mT5_Rac1_14_S120_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+Processing ./Alignment_dir/mT5_Ren2_S125_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.bam...
+[bam_sort_core] merging from 28 files and 1 in-memory blocks...
+COMMAND: samtools markdup -s ./Alignment_dir/BAM_duplicates_marked/mT5_Ren2_S125_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.coord_sorted.bam ./Alignment_dir/BAM_duplicates_marked/mT5_Ren2_S125_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+READ: 151242518
+WRITTEN: 151242518
+EXCLUDED: 16911506
+EXAMINED: 134331012
+PAIRED: 134331012
+SINGLE: 0
+DUPLICATE PAIR: 40715866
+DUPLICATE SINGLE: 0
+DUPLICATE PAIR OPTICAL: 0
+DUPLICATE SINGLE OPTICAL: 0
+DUPLICATE NON PRIMARY: 0
+DUPLICATE NON PRIMARY OPTICAL: 0
+DUPLICATE PRIMARY TOTAL: 40715866
+DUPLICATE TOTAL: 40715866
+ESTIMATED_LIBRARY_SIZE: 87047099
+
+✅ Finished: ./Alignment_dir/BAM_duplicates_marked/mT5_Ren2_S125_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+Processing ./Alignment_dir/mT5_Ren_S116_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.bam...
+[bam_sort_core] merging from 4 files and 1 in-memory blocks...
+COMMAND: samtools markdup -s ./Alignment_dir/BAM_duplicates_marked/mT5_Ren_S116_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.coord_sorted.bam ./Alignment_dir/BAM_duplicates_marked/mT5_Ren_S116_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+READ: 172924314
+WRITTEN: 172924314
+EXCLUDED: 22013300
+EXAMINED: 150911014
+PAIRED: 150911014
+SINGLE: 0
+DUPLICATE PAIR: 53310268
+DUPLICATE SINGLE: 0
+DUPLICATE PAIR OPTICAL: 0
+DUPLICATE SINGLE OPTICAL: 0
+DUPLICATE NON PRIMARY: 0
+DUPLICATE NON PRIMARY OPTICAL: 0
+DUPLICATE PRIMARY TOTAL: 53310268
+DUPLICATE TOTAL: 53310268
+ESTIMATED_LIBRARY_SIZE: 79798806
+
+✅ Finished: ./Alignment_dir/BAM_duplicates_marked/mT5_Ren_S116_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam
+```
+
+  
+*To run FeatureCounts: *    
+```{bash, eval=FALSE}
+# Copy of the script:
+#!/bin/bash
+
+# This is the script for using FeatureCounts to quantify my aligned reads
+# For my project's data
+
+featureCounts \
+  -a ./Fixed_analysis/mm10.refGene.gtf \
+  -o ./3_31_25_FeatureCounts/mT5_RNAseq_gene_counts.txt \
+  -t exon \
+  -g gene_id \
+  -T 32 \
+  -p \
+  -s 0 \
+  --ignoreDup \
+  ./Alignment_dir/BAM_duplicates_marked/*_Aligned.sortedByCoord.out.marked.bam
+```
+
+*To execute the above script: *     
+```{bash, eval=FALSE}
+conda activate angsd
+
+chmod +x ./3_31_25_FeatureCounts/FeatureCounts.sh
+
+./3_31_25_FeatureCounts/FeatureCounts.sh
+```
+
+```{}
+# FeatureCounts Progress Track record
+        ==========     _____ _    _ ____  _____  ______          _____  
+        =====         / ____| |  | |  _ \|  __ \|  ____|   /\   |  __ \ 
+          =====      | (___ | |  | | |_) | |__) | |__     /  \  | |  | |
+            ====      \___ \| |  | |  _ <|  _  /|  __|   / /\ \ | |  | |
+              ====    ____) | |__| | |_) | | \ \| |____ / ____ \| |__| |
+        ==========   |_____/ \____/|____/|_|  \_\______/_/    \_\_____/
+          v2.0.6
+
+//========================== featureCounts setting ===========================\\
+||                                                                            ||
+||             Input files : 6 BAM files                                      ||
+||                                                                            ||
+||                           mT5_Kras242_S117_L003_R1_001.fastq.gz_Aligne ... ||
+||                           mT5_Kras467_S118_L003_R1_001.fastq.gz_Aligne ... ||
+||                           mT5_Rac1_11_S119_L003_R1_001.fastq.gz_Aligne ... ||
+||                           mT5_Rac1_14_S120_L003_R1_001.fastq.gz_Aligne ... ||
+||                           mT5_Ren2_S125_L003_R1_001.fastq.gz_Aligned.s ... ||
+||                           mT5_Ren_S116_L003_R1_001.fastq.gz_Aligned.so ... ||
+||                                                                            ||
+||             Output file : mT5_RNAseq_gene_counts.txt                       ||
+||                 Summary : mT5_RNAseq_gene_counts.txt.summary               ||
+||              Paired-end : yes                                              ||
+||        Count read pairs : no                                               ||
+||              Annotation : mm10.refGene.gtf (GTF)                           ||
+||      Dir for temp files : ./3_31_25_FeatureCounts                          ||
+||                                                                            ||
+||                 Threads : 32                                               ||
+||                   Level : meta-feature level                               ||
+||      Multimapping reads : not counted                                      ||
+|| Multi-overlapping reads : not counted                                      ||
+||   Min overlapping bases : 1                                                ||
+||        Duplicated Reads : ignored                                          ||
+||                                                                            ||
+\\============================================================================//
+
+//================================= Running ==================================\\
+||                                                                            ||
+|| Load annotation file mm10.refGene.gtf ...                                  ||
+||    Features : 427386                                                       ||
+||    Meta-features : 25239                                                   ||
+||    Chromosomes/contigs : 37                                                ||
+||                                                                            ||
+|| Process BAM file mT5_Kras242_S117_L003_R1_001.fastq.gz_Aligned.sortedB ... ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 126848246                                            ||
+||    Successfully assigned alignments : 54861192 (43.2%)                     ||
+||    Running time : 0.08 minutes                                             ||
+||                                                                            ||
+|| Process BAM file mT5_Kras467_S118_L003_R1_001.fastq.gz_Aligned.sortedB ... ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 145247072                                            ||
+||    Successfully assigned alignments : 63954740 (44.0%)                     ||
+||    Running time : 0.09 minutes                                             ||
+||                                                                            ||
+|| Process BAM file mT5_Rac1_11_S119_L003_R1_001.fastq.gz_Aligned.sortedB ... ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 124346332                                            ||
+||    Successfully assigned alignments : 55075799 (44.3%)                     ||
+||    Running time : 0.08 minutes                                             ||
+||                                                                            ||
+|| Process BAM file mT5_Rac1_14_S120_L003_R1_001.fastq.gz_Aligned.sortedB ... ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 169370284                                            ||
+||    Successfully assigned alignments : 76374605 (45.1%)                     ||
+||    Running time : 0.10 minutes                                             ||
+||                                                                            ||
+|| Process BAM file mT5_Ren2_S125_L003_R1_001.fastq.gz_Aligned.sortedByCo ... ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 151242518                                            ||
+||    Successfully assigned alignments : 70618646 (46.7%)                     ||
+||    Running time : 0.09 minutes                                             ||
+||                                                                            ||
+|| Process BAM file mT5_Ren_S116_L003_R1_001.fastq.gz_Aligned.sortedByCoo ... ||
+||    Paired-end reads are included.                                          ||
+||    The reads are assigned on the single-end mode.                          ||
+||    Total alignments : 172924314                                            ||
+||    Successfully assigned alignments : 74804354 (43.3%)                     ||
+||    Running time : 0.10 minutes                                             ||
+||                                                                            ||
+|| Write the final count table.                                               ||
+|| Write the read assignment summary.                                         ||
+||                                                                            ||
+|| Summary of counting results can be found in file "./3_31_25_FeatureCounts  ||
+|| /mT5_RNAseq_gene_counts.txt.summary"                                       ||
+||                                                                            ||
+\\============================================================================//
+```
+  
+  
+  
+### Part VI: DESeq Analysis    
+  
+```{r, eval=FALSE}
+library(ggplot2)
+library(magrittr)
+
+# Gene count table pathway
+folder <- "/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_FC_genecounts/"
+
+## Reading in featureCounts output
+mT5_dfcounts <- read.table(paste0(folder, "mT5_RNAseq_gene_counts.txt"), header = TRUE)
+
+## Check on the imported data matrix
+str(mT5_dfcounts)
+```
+
+```{}
+'data.frame':	25239 obs. of  12 variables:
+ $ Geneid                                                                                                          : chr  "Zc3h14" "Troap" "Clca2" "1810013L24Rik" ...
+ $ Chr                                                                                                             : chr  "chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr"| __truncated__ "chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr"| __truncated__ "chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3" "chr16;chr16;chr16;chr16" ...
+ $ Start                                                                                                           : chr  "98746968;98746968;98746968;98746968;98746968;98746968;98746968;98746968;98746968;98746968;98747480;98747480;987"| __truncated__ "99074973;99074973;99075350;99075350;99075608;99075608;99077288;99077288;99077529;99077529;99077832;99077832;990"| __truncated__ "145070263;145072137;145075627;145077869;145081196;145084086;145084929;145086296;145087921;145090701;145092119;1"| __truncated__ "8830100;8831321;8842968;8855794" ...
+ $ End                                                                                                             : chr  "98747158;98747158;98747158;98747158;98747158;98747158;98747158;98747158;98747158;98747158;98747522;98747522;987"| __truncated__ "99075092;99075067;99075498;99075498;99075797;99075797;99077445;99077445;99077666;99077666;99077911;99077911;990"| __truncated__ "145071722;145072367;145075797;145078139;145081420;145084192;145085106;145086526;145088148;145090860;145092227;1"| __truncated__ "8830685;8831401;8843243;8858924" ...
+ $ Strand                                                                                                          : chr  "+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+"| __truncated__ "+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+" "-;-;-;-;-;-;-;-;-;-;-;-;-;-" "+;+;+;+" ...
+ $ Length                                                                                                          : int  4184 2266 3988 4074 2748 4208 6896 1041 907 692 ...
+ $ ..Alignment_dir.BAM_duplicates_marked.mT5_Kras242_S117_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam: int  12618 525 22 2842 24478 808 646 1203 366 105 ...
+ $ ..Alignment_dir.BAM_duplicates_marked.mT5_Kras467_S118_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam: int  15508 588 18 3670 24829 926 698 1294 563 153 ...
+ $ ..Alignment_dir.BAM_duplicates_marked.mT5_Rac1_11_S119_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam: int  12547 614 2 3538 24181 592 349 1112 171 77 ...
+ $ ..Alignment_dir.BAM_duplicates_marked.mT5_Rac1_14_S120_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam: int  17486 1153 14 5358 39471 1109 220 2087 248 205 ...
+ $ ..Alignment_dir.BAM_duplicates_marked.mT5_Ren2_S125_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam   : int  18454 2340 8 3119 25113 1106 1427 1775 411 131 ...
+ $ ..Alignment_dir.BAM_duplicates_marked.mT5_Ren_S116_L003_R1_001.fastq.gz_Aligned.sortedByCoord.out.marked.bam    : int  18906 2233 14 3173 30661 787 1300 2344 512 130 ...
+```
+
+
+```{r, eval=FALSE}
+# To re-organize the sample name: 
+orig_names <- names(mT5_dfcounts) 
+
+# Change name to make the sample labels cleaner
+cleaned_names <- gsub(".*\\.BAM_duplicates_marked\\.(mT5_.*?_S\\d+)_.*", "\\1", orig_names)
+
+names(mT5_dfcounts) <- cleaned_names
+
+# Now check on the data matrix again
+str(mT5_dfcounts)
+```
+
+```{}
+'data.frame':	25239 obs. of  12 variables:
+ $ Geneid          : chr  "Zc3h14" "Troap" "Clca2" "1810013L24Rik" ...
+ $ Chr             : chr  "chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr12;chr"| __truncated__ "chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr15;chr"| __truncated__ "chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3;chr3" "chr16;chr16;chr16;chr16" ...
+ $ Start           : chr  "98746968;98746968;98746968;98746968;98746968;98746968;98746968;98746968;98746968;98746968;98747480;98747480;987"| __truncated__ "99074973;99074973;99075350;99075350;99075608;99075608;99077288;99077288;99077529;99077529;99077832;99077832;990"| __truncated__ "145070263;145072137;145075627;145077869;145081196;145084086;145084929;145086296;145087921;145090701;145092119;1"| __truncated__ "8830100;8831321;8842968;8855794" ...
+ $ End             : chr  "98747158;98747158;98747158;98747158;98747158;98747158;98747158;98747158;98747158;98747158;98747522;98747522;987"| __truncated__ "99075092;99075067;99075498;99075498;99075797;99075797;99077445;99077445;99077666;99077666;99077911;99077911;990"| __truncated__ "145071722;145072367;145075797;145078139;145081420;145084192;145085106;145086526;145088148;145090860;145092227;1"| __truncated__ "8830685;8831401;8843243;8858924" ...
+ $ Strand          : chr  "+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+"| __truncated__ "+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+;+" "-;-;-;-;-;-;-;-;-;-;-;-;-;-" "+;+;+;+" ...
+ $ Length          : int  4184 2266 3988 4074 2748 4208 6896 1041 907 692 ...
+ $ mT5_Kras242_S117: int  12618 525 22 2842 24478 808 646 1203 366 105 ...
+ $ mT5_Kras467_S118: int  15508 588 18 3670 24829 926 698 1294 563 153 ...
+ $ mT5_Rac1_11_S119: int  12547 614 2 3538 24181 592 349 1112 171 77 ...
+ $ mT5_Rac1_14_S120: int  17486 1153 14 5358 39471 1109 220 2087 248 205 ...
+ $ mT5_Ren2_S125   : int  18454 2340 8 3119 25113 1106 1427 1775 411 131 ...
+ $ mT5_Ren_S116    : int  18906 2233 14 3173 30661 787 1300 2344 512 130 ...
+```
+
+
+```{r, eval=FALSE}
+# Prepare the dataset for DESeq analysis    
+library(DESeq2)
+
+# Add row names to my data matrix: gene IDs should be stored as row.names
+row.names(mT5_dfcounts) <- make.names(mT5_dfcounts$Geneid)
+
+# Remove columns without data
+mT5_genecounts <- mT5_dfcounts[ , -c(1:6)]         # The result matrix is the rowdata needed for DESeq analysis   
+
+# To generate the coldata needed for DESeq analysis
+# Need to classify samples the "mT5_dfcounts" by the shRNA-KD conditions
+mT5_coldata <- data.frame(
+  condition = gsub("mT5_([A-Za-z0-9]+).*", "\\1", names(mT5_genecounts)),
+  row.names = names(mT5_genecounts)
+)
+
+# Simplify condition name (remove trailing numbers like "242", "2", etc.)
+mT5_coldata$condition <- gsub("^Kras[0-9]+$", "Kras", mT5_coldata$condition)
+mT5_coldata$condition <- gsub("^Ren[0-9]*$", "Ren", mT5_coldata$condition)
+```
+
+*To check on the data matrix of "mT5_genecounts":*   
+```{}
+head(mT5_genecounts)
+
+# Output: 
+               mT5_Kras242_S117 mT5_Kras467_S118 mT5_Rac1_11_S119 mT5_Rac1_14_S120 mT5_Ren2_S125 mT5_Ren_S116
+Zc3h14                    12618            15508            12547            17486         18454        18906
+Troap                       525              588              614             1153          2340         2233
+Clca2                        22               18                2               14             8           14
+X1810013L24Rik             2842             3670             3538             5358          3119         3173
+Srsf7                     24478            24829            24181            39471         25113        30661
+Fignl2                      808              926              592             1109          1106          787
+```
+
+*To check on the data matrix of "mT5_coldata":*   
+```{}
+mT5_coldata
+
+# Output:
+                 condition
+mT5_Kras242_S117      Kras
+mT5_Kras467_S118      Kras
+mT5_Rac1_11_S119      Rac1
+mT5_Rac1_14_S120      Rac1
+mT5_Ren2_S125          Ren
+mT5_Ren_S116           Ren
+```
+
+```{r, eval=FALSE}
+# To run DESeq analysis:
+mT5_coldata$condition <- factor(mT5_coldata$condition)
+
+# Set the baseline level to "Ren" condition:
+mT5_coldata$condition <- relevel(mT5_coldata$condition, ref = "Ren")
+
+dds_mT5 <- DESeqDataSetFromMatrix(countData = mT5_genecounts,
+                                  colData = mT5_coldata,
+                                  rowData = mT5_dfcounts,
+                                  design = ~ condition)
+```
+
+*To check on DESeqDataSet:*   
+```{}
+dds_mT5
+
+# Output:
+class: DESeqDataSet 
+dim: 25239 6 
+metadata(1): version
+assays(1): counts
+rownames(25239): Zc3h14 Troap ... Btbd35f26 Btbd35f6
+rowData names(12): Geneid Chr ... mT5_Ren2_S125 mT5_Ren_S116
+colnames(6): mT5_Kras242_S117 mT5_Kras467_S118 ... mT5_Ren2_S125 mT5_Ren_S116
+colData names(1): condition
+```
+
+
+
+### Part VII: Accessing DESeq analysis and generate plots:  
+  
+*Access count data: *    
+```{r, eval = FALSE}
+head(counts(dds_mT5))
+```
+
+Output:
+```{}
+               mT5_Kras242_S117 mT5_Kras467_S118 mT5_Rac1_11_S119 mT5_Rac1_14_S120 mT5_Ren2_S125 mT5_Ren_S116
+Zc3h14                    12618            15508            12547            17486         18454        18906
+Troap                       525              588              614             1153          2340         2233
+Clca2                        22               18                2               14             8           14
+X1810013L24Rik             2842             3670             3538             5358          3119         3173
+Srsf7                     24478            24829            24181            39471         25113        30661
+Fignl2                      808              926              592             1109          1106          787
+```
+
+*Access library size: *    
+```{r, eval=FALSE}
+colSums(counts(dds_mT5))
+```
+
+Output:
+```{}
+mT5_Kras242_S117 mT5_Kras467_S118 mT5_Rac1_11_S119 mT5_Rac1_14_S120    mT5_Ren2_S125     mT5_Ren_S116 
+        54861192         63954740         55075799         76374605         70618646         74804354 
+```
+
+```{r, eval=FALSE}
+# To plot library size in a barplot
+library(dplyr)
+
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/barplot_dds_mT5_librarysize.png", width = 800, height = 600)
+colSums(counts(dds_mT5)) %>% barplot(main = "Library Sizes", ylab = "Total Counts", las = 2)
+dev.off()
+```
+
+Output of the barplot:
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/barplot_dds_mT5_librarysize.png")
+```
+------Interpretation: the library sizes are not equal between samples, which suggest a difference in total read counts across all samples. So far, the data is not yet ready for quantification purpose. Need further normalization to make the data reliably quantifiable relatively to each other.  
+  
+
+```{r, eval=FALSE}
+# Before any further analysis: Remove genes with no reads 
+keep_genes <- rowSums(counts(dds_mT5)) > 0
+dds_mT5 <- dds_mT5[ keep_genes, ]
+```
+
+  
+   
+#### Part VIII: SF-Adjustment and Normalization in DESeq analysis(Accessing DESeq analysis):    
+  
+*Calculating and applying size factor: *    
+```{r, eval=FALSE}
+dds_mT5 <- estimateSizeFactors(dds_mT5)      # calculate SFs, add them to object
+
+# Plotting
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/SF_plot_mT5.png", width = 800, height = 600)
+plot(sizeFactors(dds_mT5), colSums(counts(dds_mT5)), ylab = "library sizes", xlab = "size factors", cex = .6 )
+dev.off()
+```
+
+Output of the size factor V.S. library size plot:
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/SF_plot_mT5.png")
+```
+
+*Compare between raw read counts and SF normalized counts to assess whether normalization helped adjust gblobal differences between samples: *    
+```{r, eval=FALSE}
+## extracting normalized counts
+counts_sf_normalized <- counts(dds_mT5, normalized=TRUE)
+
+## Plotting the boxplots
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Rawread_mT5.png", width = 800, height = 600)
+boxplot(counts(dds_mT5), main = "read counts only", cex = .6)
+dev.off()
+
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/SFNorm_mT5.png", width = 800, height = 600)
+boxplot(counts_sf_normalized, main = "SF normalized", cex = .6)
+dev.off()
+```
+
+Output of the Raw read counts V.S. SF-normalized read counts plot:
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Rawread_mT5.png")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/SFNorm_mT5.png")
+```
+
+*To see the influence of the sequencing depth normalization more clearly, make box plots of log2(read counts): *    
+```{r, eval=FALSE}
+# Plotting boxplot of non-normalized
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Non-norm_mT5.png", width = 800, height = 600)
+boxplot(log2(counts(dds_mT5) +1), notch=TRUE, 
+        main = "Non-normalized read counts",
+        ylab ="log2(read counts)", cex = .6)
+dev.off()
+
+# Plotting boxplot of size-factor normalized values
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Norm_mT5.png", width = 800, height = 600)
+boxplot(log2(counts(dds_mT5, normalized=TRUE) +1), notch=TRUE,
+        main = "Size-factor-normalized read counts",
+        ylab ="log2(read counts)", cex = .6)
+dev.off()
+```
+
+Output of the Raw read counts V.S. SF-normalized read counts plot in log2(read counts) forms:
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Non-norm_mT5.png")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Norm_mT5.png")
+```
+------Interpretation: Upon size factor normalization, the mean read counts of genes was aligned acrossed samples, making them quantitatively comparale ( more reliably ) for downstream analysis.    
+
+*Normalization(continued-rlog transformation): Make a scatterplot of log normalized counts against each other to see how well the actual values correlate which each other per sample and gene: *   
+*This is to assess the variation between two biological samples representing one experimental condition and thus how well actual read count values can reflect real experimental manipulations.*     
+```{r, eval=FALSE}
+# Get log counts and assign the log values to a distinct matrix within the DESeq.ds object
+assay(dds_mT5, "log_counts") <- log2(counts(dds_mT5, normalized = FALSE) + 1)
+
+# Normalize read counts
+assay(dds_mT5, "log_norm_counts") <- log2(counts(dds_mT5, normalized=TRUE) + 1)
+```
+
+```{r, eval=FALSE}
+# Generate correlation plots for each of the 3 experimental conditions in this analysis (Kras, Rac1, Ren)
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/KRAS_biolRepV_mT5.png", width = 800, height = 600)
+dds_mT5[, c("mT5_Kras242_S117","mT5_Kras467_S118")] %>% 
+  assay(., "log_norm_counts") %>%
+  plot(., cex=.1, main = "Kras242 vs. Kras467")
+dev.off()
+
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Rac1_biolRepV_mT5.png", width = 800, height = 600)
+dds_mT5[, c("mT5_Rac1_11_S119","mT5_Rac1_14_S120")] %>% 
+  assay(., "log_norm_counts") %>%
+  plot(., cex=.1, main = "Rac1_11 vs. Rac1_14")
+dev.off()
+
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Ren_biolRepV_mT5.png", width = 800, height = 600)
+dds_mT5[, c("mT5_Ren2_S125","mT5_Ren_S116")] %>% 
+  assay(., "log_norm_counts") %>%
+  plot(., cex=.1, main = "Ren2 vs. Ren")
+dev.off()
+```
+
+Output of correlation plots for all 3 conditions:
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Kras_biolRepV_mT5.png")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Rac1_biolRepV_mT5.png")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/Ren_biolRepV_mT5.png")
+```
+
+------Interpretation: This observation indicates that the standard deviation of the gene expression levels depends systematically on the mean: the lower the mean read counts per gene, the higher the standard deviation.   
+
+*Assess this pattern visually by vsn package functions: *  
+```{r, eval=FALSE}
+# Generate the base meanSdPlot using sequencing depth normalized log2(read counts)
+
+# Plotting
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/msdplot_mT5.png", width = 800, height = 600)
+msd_plot <- vsn::meanSdPlot(assay(dds_mT5, "log_norm_counts"),
+                            ranks=FALSE, # show the data on the original scale
+                            plot = FALSE)
+msd_plot$gg +
+  ggtitle("Sequencing depth normalized log2(read counts)") +
+  ylab("standard deviation")
+
+dev.off()
+```
+
+Output msd plot:  
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/msdplot_mT5.png")
+```
+------Interpretation: The red line depicts the running median estimator. If there is no variance-mean dependence, then the line should be approximately horizontal. At low expression levels (left side), there's high variance — SD starts high (~1.2); As mean expression increases, the standard deviation decreases, eventually flattening out This means that variance is not constant across expression levels, which suggests that there is some variance-mean dependence for genes with low read counts. 
+  
+  
+
+*Reducing dependency of variance on the mean: (Use rlog) *    
+```{r, eval=FALSE}
+ddsmT5_dst_rlog <- rlog(dds_mT5, blind = TRUE)
+```
+
+```{r, eval=FALSE}
+# To visualize the results of rlog transformation: 
+# Cross compare log2 and rlog transformation differences:
+
+# For log2 transformation: 
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/SF_log2plot_mT5.png", width = 800, height = 600)
+
+plot(assay(dds_mT5, "log_norm_counts")[,1:2], cex=.1, main = "size factor and log2-transformed")
+
+dev.off()
+
+# For rlog transformation
+# (The rlog-transformed counts are stored in the "assay" accessor)
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/dst_rlog_mT5.png", width = 800, height = 600)
+
+plot(assay(ddsmT5_dst_rlog)[,1:2],
+     cex=.1, main = "rlog transformed",
+     xlab = colnames(assay(ddsmT5_dst_rlog[,1])),
+     ylab = colnames(assay(ddsmT5_dst_rlog[,2])) )
+
+dev.off()
+```
+
+Output plots:  
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/SF_log2plot_mT5.png")
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/dst_rlog_mT5.png")
+```
+------Interpretation:  The variance much lower for small read counts using rlog.    
+
+```{r, eval=FALSE}
+# To visualize the above interpretation: draw mean-sd-plot
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/msdplot_rlog_mT5.png", width = 800, height = 600)
+msd_rlog_plot <- vsn::meanSdPlot(assay(ddsmT5_dst_rlog), ranks=FALSE, plot = FALSE)
+msd_rlog_plot$gg + labs(title = "Following rlog transformation", x = "Mean", y = "Standard deviation") +
+  coord_cartesian(ylim = c(0,3))
+dev.off()
+```
+
+Output plot:  
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/msdplot_rlog_mT5.png")
+```
+------Interpretation: The variance dependency on mean at lower expression level genes was much reduced, though not perfect.
+
+*Now save all images to R data for record-keeping purposes: *     
+```{r, eval=FALSE}
+save.image(file = "/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/Old_record_DESeq_images/mT5_DESeq_data-access_image.RData")
+```
+
+
+
+
+
+
+
