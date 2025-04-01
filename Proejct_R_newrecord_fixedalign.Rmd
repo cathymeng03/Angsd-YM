@@ -1106,6 +1106,11 @@ knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Projec
 **Interpretation:  The variance is much lower for small read counts using rlog transformation.**    
 
 ```{r, eval=FALSE}
+rlog_norm_counts_new <- assay(ddsmT5_dst_rlog_new)
+```
+
+
+```{r, eval=FALSE}
 # To visualize the above interpretation: draw mean-sd-plot
 png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/New_record_DESeq_images/rlog_msdplot_mT5_new.png", width = 800, height = 600)
 msd_rlog_plot_new <- vsn::meanSdPlot(assay(ddsmT5_dst_rlog_new), ranks=FALSE, plot = FALSE)
@@ -1125,7 +1130,107 @@ knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Projec
 ```{r, eval=FALSE}
 save.image(file = "/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/New_record_DESeq_images/DESeqAnalysis_mT5_New_images.RData")
 ```
+  
+  
+  
+#### Part IX: Exploratory data analysis plots    
+  
+*A. Correlation heatmap*     
+```{r, eval=FALSE}
+library(tidyverse)
+library(magrittr)
+library(pheatmap)
 
+# Use rlog-normalized counts to compute correlations and then sample-sample distances, plotting the result as a heatmap
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/New_record_DESeq_images/Exploratory_analysis_new_images/PearsonCor_mT5_new.png", width = 800, height = 600)
 
+corr_coeff_new <- cor(rlog_norm_counts_new, method ="pearson")
+as.dist(1-corr_coeff_new, upper=TRUE) %>%
+as.matrix %>%
+pheatmap::pheatmap(main="Pearson correlation", treeheight_row=0) 
+## hide the row dendrogram
 
+dev.off()
+```
+  
+Output heatmap:  
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/New_record_DESeq_images/Exploratory_analysis_new_images/PearsonCor_mT5_new.png")
+```
+  
+**Interpretation: **
+```
+There are some differences between the two biological replicates of each of the 3 conditions (Kras, Rac1, Ren, each of which representing the target of our shRNA construct in the cell line model), which might be due to biological variations between samples. However, as expected, there seems to be very huge difference across the 3 experimental conditions, indicting strong and good separation between our conditions.
+```
+  
+  
+*B. Dendrogram*     
+```{r, eval=FALSE}
+# Pearson corr. for rlog_norm values
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/New_record_DESeq_images/Exploratory_analysis_new_images/Dendrogram_mT5_new.png", width = 800, height = 600)
+
+as.dist(1 - corr_coeff_new) %>%
+hclust %>%
+plot(labels=colnames(.), main="rlog transformed read counts")
+
+dev.off()
+```
+  
+Output dendrogram:  
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/New_record_DESeq_images/Exploratory_analysis_new_images/Dendrogram_mT5_new.png")
+```
+  
+**Interpretation: **
+```
+The dendrogram plot confirms what has been observed from heatmap.
+```
+  
+  
+*C. PCA*  
+```{r, eval=FALSE}
+# Manual computation of PCA analysis
+rv_new <- matrixStats::rowVars(as.matrix(rlog_norm_counts_new), useNames = TRUE)
+top_variable_new <- order(rv_new, decreasing = TRUE)[seq_len(500)]
+pca_new <- prcomp(t(rlog_norm_counts_new[top_variable_new, ]))
+head(pca_new$x)
+```
+
+```{}
+                          PC1        PC2        PC3        PC4         PC5
+mT5_Kras242_S117  -5.79821169   8.622172   2.177493 -7.4922253 -0.98844336
+mT5_Kras467_S118 -23.09305419  11.149662  -3.173001  4.0973642  0.01402502
+mT5_Rac1_11_S119  15.30660337  10.503979  11.893241  2.7590851  0.29441477
+mT5_Rac1_14_S120  17.60619732   4.750638 -13.461516  0.2685765  0.20896620
+mT5_Ren2_S125     -0.08125628 -19.425117   1.143886  1.4680356 -3.04141682
+mT5_Ren_S116      -3.94027853 -15.601335   1.419896 -1.1008361  3.51245418
+                          PC6
+mT5_Kras242_S117 1.314227e-14
+mT5_Kras467_S118 1.055406e-14
+mT5_Rac1_11_S119 3.774758e-15
+mT5_Rac1_14_S120 1.594905e-14
+mT5_Ren2_S125    3.358425e-15
+mT5_Ren_S116     5.093148e-15
+```
+
+```{r, eval=FALSE}
+# PCA plotting
+png("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/New_record_DESeq_images/Exploratory_analysis_new_images/PCA_mT5_new.png", width = 800, height = 600)
+
+plotPCA(ddsmT5_dst_rlog_new) +
+  labs(color=NULL) +
+  theme_bw()
+
+dev.off()
+```
+  
+Output PCA:  
+```{r}
+knitr::include_graphics("/Users/yinuomeng/Desktop/Next_Gen_Seq/Individual_Project/Project_file_summary/New_record_DESeq_images/Exploratory_analysis_new_images/PCA_mT5_new.png")
+```
+
+**Interpretation: **
+```
+The PCA plot further confirms what has been observed from heatmap. In addition, the PCA plot might also demonstrate a slightly larger difference between the two biological replicates of "Kras" condition than the difference between replicates of the otehr two conditions.
+```
 
