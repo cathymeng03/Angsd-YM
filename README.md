@@ -1,5 +1,5 @@
 # Angsd-YM
-This is the work repository for Next-Gen-Seq Angsd Individual Project
+This is the work repository for Next-Gen-Seq Angsd Individual Project for Yinuo (Cathy) Meng (yim4002)
 
 To store R studio project, scripts, and any documents geneated during analysis
 
