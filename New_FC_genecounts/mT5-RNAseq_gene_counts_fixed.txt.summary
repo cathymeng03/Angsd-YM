@@ -1,0 +1,15 @@
+Status	./Fixed_analysis/3_31_25_FIxed_FeatureCounts/Marked_BAM_FromFixedAlign/mT5_Kras242_S117.marked.bam	./Fixed_analysis/3_31_25_FIxed_FeatureCounts/Marked_BAM_FromFixedAlign/mT5_Kras467_S118.marked.bam	./Fixed_analysis/3_31_25_FIxed_FeatureCounts/Marked_BAM_FromFixedAlign/mT5_Rac1_11_S119.marked.bam	./Fixed_analysis/3_31_25_FIxed_FeatureCounts/Marked_BAM_FromFixedAlign/mT5_Rac1_14_S120.marked.bam	./Fixed_analysis/3_31_25_FIxed_FeatureCounts/Marked_BAM_FromFixedAlign/mT5_Ren2_S125.marked.bam	./Fixed_analysis/3_31_25_FIxed_FeatureCounts/Marked_BAM_FromFixedAlign/mT5_Ren_S116.marked.bam
+Assigned	54861192	63954740	55075799	76374605	70618646	74804354
+Unassigned_Unmapped	0	0	0	0	0	0
+Unassigned_Read_Type	0	0	0	0	0	0
+Unassigned_Singleton	0	0	0	0	0	0
+Unassigned_MappingQuality	0	0	0	0	0	0
+Unassigned_Chimera	0	0	0	0	0	0
+Unassigned_FragmentLength	0	0	0	0	0	0
+Unassigned_Duplicate	37534058	44106682	38369840	49505052	40715866	53310268
+Unassigned_MultiMapping	21206176	24382786	19844334	26008648	21608950	27354316
+Unassigned_Secondary	0	0	0	0	0	0
+Unassigned_NonSplit	0	0	0	0	0	0
+Unassigned_NoFeatures	12210422	11653822	10032384	16118516	16987943	16013561
+Unassigned_Overlapping_Length	0	0	0	0	0	0
+Unassigned_Ambiguity	1036398	1149042	1023975	1363463	1311113	1441815
